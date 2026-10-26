@@ -111,30 +111,48 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const acao = document.getElementById('acao').value;
 
       try {
-        // 1. Inserir no Histórico
-        const { error: errHist } = await supabaseClient.from('historico').insert([{
-          id_ferramenta: idFerramenta,
-          nome_ferramenta: nomeFerramenta,
-          nome_funcionario: funcionario,
-          local_uso: local,
-          acao: acao
-        }]);
+        // 1. Verifica se a ferramenta JÁ EXISTE no banco
+        const { data: ferramenta, error: errBusca } = await supabaseClient
+          .from('ferramentas')
+          .select('*')
+          .eq('id', idFerramenta)
+          .maybeSingle();
 
-        if (errHist) throw errHist;
+        if (errBusca) throw errBusca;
 
-        // 2. Atualizar tabela de Ferramentas
+        // Se NÃO existir, bloqueia o registro
+        if (!ferramenta) {
+          throw new Error(`A ferramenta "${idFerramenta}" não está cadastrada no sistema!`);
+        }
+
         const novoStatus = (acao === 'Retirada') ? 'Emprestado' : 'Disponível';
         const comQuem = (acao === 'Retirada') ? funcionario : null;
 
-        await supabaseClient.from('ferramentas').upsert([{
-          id: idFerramenta,
-          nome: nomeFerramenta,
-          local_padrao: local,
-          local_atual: local,
-          status: novoStatus,
-          com_quem_esta: comQuem,
-          desde: new Date().toISOString()
-        }]);
+        // 2. Apenas ATUALIZA o status da ferramenta existente
+        const { error: errFerramenta } = await supabaseClient
+          .from('ferramentas')
+          .update({
+            status: novoStatus,
+            com_quem_esta: comQuem,
+            local_atual: local,
+            desde: new Date().toISOString()
+          })
+          .eq('id', idFerramenta);
+
+        if (errFerramenta) throw errFerramenta;
+
+        // 3. Insere o registro no histórico
+        const { error: errHist } = await supabaseClient
+          .from('historico')
+          .insert([{
+            id_ferramenta: idFerramenta,
+            nome_ferramenta: ferramenta.nome, // Utiliza o nome oficial do cadastro
+            nome_funcionario: funcionario,
+            local_uso: local,
+            acao: acao
+          }]);
+
+        if (errHist) throw errHist;
 
         msg.className = "p-4 rounded-lg text-center text-sm font-semibold bg-green-100 text-green-800 block";
         msg.innerText = "✅ Movimentação registrada com sucesso!";
