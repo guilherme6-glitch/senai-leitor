@@ -3,168 +3,410 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SENAI | Leitor de Ferramentas</title>
+  <title>MUNDO SENAI • RASTREIO TI</title>
+  
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Supabase JS Client v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  
+  <!-- Biblioteca do Leitor de QR Code / Câmara -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex items-center justify-center p-4">
 
-  <!-- Cabeçalho -->
-  <header class="bg-slate-900 text-white p-4 border-b-4 border-red-600 shadow-md">
-    <div class="max-w-md mx-auto flex justify-between items-center">
-      <h1 class="text-xl font-bold tracking-wider text-red-500">SENAI <span class="text-white text-base font-normal">| Leitor QR</span></h1>
-      <span class="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-mono">● Online</span>
-    </div>
-  </header>
-
-  <main class="max-w-md mx-auto p-4 space-y-4">
-
-    <!-- Área do Câmera / QR Code -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-      <h2 class="font-semibold text-slate-700 mb-2 text-center">1. Escanear QR Code da Ferramenta</h2>
-      <div id="reader" class="overflow-hidden rounded-lg border-2 border-dashed border-slate-300"></div>
-      <p id="qr-result" class="text-xs text-center text-slate-500 mt-2">Aponte a câmera para o QR Code</p>
-    </div>
-
-    <!-- Formulário de Registro -->
-    <form id="form-registro" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
-      <h2 class="font-semibold text-slate-700 border-b pb-2">2. Dados da Movimentação</h2>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">ID da Ferramenta</label>
-        <input type="text" id="id_ferramenta" required readonly placeholder="Aguardando bipagem..." 
-               class="w-full bg-slate-100 border border-slate-300 rounded-lg p-2.5 text-sm font-mono font-bold text-slate-700">
-      </div>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Nome da Ferramenta</label>
-        <input type="text" id="nome_ferramenta" required placeholder="Ex: Multímetro Digital" 
-               class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none">
-      </div>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Nome do Funcionário</label>
-        <input type="text" id="nome_funcionario" required placeholder="Ex: Ana Beatriz Souza" 
-               class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none">
-      </div>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Local de Uso / Setor</label>
-        <input type="text" id="local_uso" required placeholder="Ex: Oficina de Mecânica" 
-               class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none">
-      </div>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Ação</label>
-        <select id="acao" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none">
-          <option value="Retirada">🔴 Retirada (Empréstimo)</option>
-          <option value="Devolução">🟢 Devolução</option>
-        </select>
-      </div>
-
-      <button type="submit" id="btn-submit" 
-              class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow transition-all duration-200">
-        Confirmar e Registrar
-      </button>
-    </form>
-
-    <!-- Feedback Mensagem -->
-    <div id="mensagem" class="hidden p-4 rounded-lg text-center text-sm font-semibold"></div>
-
-  </main>
-
-  <script>
+  <!-- CARD PRINCIPAL DO LEITOR -->
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200">
     
-// Configurações do Supabase
-const SUPABASE_URL = "https://gfxctmjgcbgxsrquugrt.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmeGN0bWpnY2JneHNycXV1Z3J0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMjI4NzgsImV4cCI6MjEwODU5ODg3OH0.gvwfxHzgVF72epEMMTdBdRvovmgbtMHquYCFyFa2Li0";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    <!-- Título do Topo -->
+    <div class="text-center pb-4 border-b-2 border-blue-900 mb-5">
+      <h1 class="text-xl font-extrabold text-blue-900 tracking-wide">
+        MUNDO SENAI • RASTREIO TI
+      </h1>
+    </div>
 
-    // Inicialização da Câmera QR Code
-    const html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 200, height: 200 } },
-      (decodedText) => {
-        document.getElementById('id_ferramenta').value = decodedText;
-        document.getElementById('qr-result').innerText = `✅ QR Code Lido: ${decodedText}`;
-      },
-      (errorMessage) => {}
-    ).catch(err => {
-      document.getElementById('reader').innerText = "Câmera não permitida ou indisponível.";
+    <!-- 1. Campo de Identificação do Funcionário (Bloqueado) -->
+    <div class="mb-5">
+      <div id="badge-funcionario" class="bg-emerald-100 border border-emerald-200 rounded-xl p-3 text-center text-emerald-900 font-bold text-sm flex items-center justify-center gap-2">
+        <i data-lucide="user" class="w-4 h-4 text-emerald-800"></i>
+        <span id="txt-funcionario">Identificando funcionário pela URL...</span>
+      </div>
+    </div>
+
+    <!-- 2. Local de Destino / Uso (Editável) -->
+    <div class="mb-5">
+      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+        Local de Destino / Uso:
+      </label>
+      <select id="select-local" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none text-sm bg-white font-medium text-slate-700">
+        <option value="">-- Não Definido / Nenhum (Opcional) --</option>
+      </select>
+    </div>
+
+    <!-- 3. Escolha de Operação (Botões que abrem a câmera) -->
+    <div class="mb-5 space-y-3">
+      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+        Escolha de Operação:
+      </label>
+      
+      <button type="button" onclick="iniciarScanner('Retirada')"
+        class="w-full py-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-extrabold rounded-xl shadow-md transition flex items-center justify-center gap-2 text-base">
+        <i data-lucide="arrow-down" class="w-5 h-5"></i>
+        <span>Retirada</span>
+      </button>
+
+      <button type="button" onclick="iniciarScanner('Devolução')"
+        class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-extrabold rounded-xl shadow-md transition flex items-center justify-center gap-2 text-base">
+        <i data-lucide="arrow-up" class="w-5 h-5"></i>
+        <span>Devolução</span>
+      </button>
+    </div>
+
+    <!-- 4. Lista de Ferramentas Bipadas -->
+    <div class="mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+          Ferramentas Bipadas (<span id="count-bipadas">0</span>):
+        </label>
+        <button type="button" onclick="limparLista()" id="btn-limpar" class="hidden text-[11px] text-red-600 hover:underline font-semibold">
+          Limpar todas
+        </button>
+      </div>
+
+      <div id="container-bipadas" class="min-h-[50px] p-3 rounded-xl border border-slate-200 bg-slate-50 flex flex-col gap-2 max-h-48 overflow-y-auto">
+        <p id="msg-empty" class="text-xs text-slate-400 text-center py-2">
+          Nenhuma ferramenta bipada ainda.
+        </p>
+      </div>
+    </div>
+
+    <!-- Mensagem de Feedback/Status -->
+    <div id="feedback-msg" class="hidden p-3 rounded-xl text-xs font-bold text-center mb-4"></div>
+
+    <!-- 5. Botão de Confirmação -->
+    <button type="button" id="btn-confirmar" onclick="confirmarRegistros()"
+      class="w-full py-3.5 bg-blue-900 hover:bg-blue-800 active:bg-blue-950 text-white font-extrabold rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-base disabled:opacity-50 disabled:cursor-not-allowed">
+      <i data-lucide="check-circle" class="w-5 h-5"></i>
+      <span>Confirmar Registros</span>
+    </button>
+
+  </div>
+
+  <!-- MODAL DA CÂMERA DE LEITURA DO QR CODE -->
+  <div id="modal-scanner" class="fixed inset-0 bg-slate-900 bg-opacity-90 z-50 hidden flex flex-col items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 text-center shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <span id="badge-modo-scanner" class="px-3 py-1 rounded-full text-xs font-bold text-white bg-red-500">
+          Escaneando para Retirada
+        </span>
+        <button onclick="fecharScanner()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+      </div>
+
+      <!-- Container do Leitor de Vídeo -->
+      <div id="reader" class="w-full rounded-xl overflow-hidden border border-slate-200 my-2"></div>
+      
+      <p class="text-xs text-slate-500 mt-2">Aponte a câmara para o QR Code da ferramenta</p>
+      
+      <button onclick="fecharScanner()" class="mt-4 w-full py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-xs">
+        Concluir Leitura / Fechar
+      </button>
+    </div>
+  </div>
+
+  <!-- LÓGICA JAVASCRIPT -->
+  <script>
+    // Configuração do Supabase
+    const SUPABASE_URL = "https://gfxctmjgcbgxsrquugrt.supabase.co"; // Substitua pela sua URL
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmeGN0bWpnY2JneHNycXV1Z3J0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMjI4NzgsImV4cCI6MjEwODU5ODg3OH0.gvwfxHzgVF72epEMMTdBdRvovmgbtMHquYCFyFa2Li0";            // Substitua pela sua Key
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Estado da Aplicação
+    let funcionarioAtual = null; // { id, nome }
+    let listaFerramentasBipadas = []; // Array de { id, nome, acao }
+    let html5QrcodeScanner = null;
+    let modoOperacaoAtual = 'Retirada';
+
+    // Inicialização ao carregar a página
+    window.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+      await carregarFuncionarioURL();
+      await carregarLocaisDropdown();
     });
 
-    // Envio do Formulário para o Supabase
-    document.getElementById('form-registro').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('btn-submit');
-      const msg = document.getElementById('mensagem');
+    // 1. LER FUNCIONÁRIO PELA URL (?funcionario=ID ou ?id=ID)
+    async function carregarFuncionarioURL() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const funcId = urlParams.get('funcionario') || urlParams.get('id') || urlParams.get('matricula');
+      const txtFunc = document.getElementById('txt-funcionario');
+      const badgeFunc = document.getElementById('badge-funcionario');
 
-      btn.disabled = true;
-      btn.innerText = "Registrando...";
-
-      const idFerramenta = document.getElementById('id_ferramenta').value;
-      const nomeFerramenta = document.getElementById('nome_ferramenta').value;
-      const funcionario = document.getElementById('nome_funcionario').value;
-      const local = document.getElementById('local_uso').value;
-      const acao = document.getElementById('acao').value;
+      if (!funcId) {
+        txtFunc.innerText = "❌ Nenhum funcionário informado na URL!";
+        badgeFunc.className = "bg-red-100 border border-red-200 rounded-xl p-3 text-center text-red-800 font-bold text-sm flex items-center justify-center gap-2";
+        return;
+      }
 
       try {
-        // 1. Verifica se a ferramenta JÁ EXISTE no banco
-        const { data: ferramenta, error: errBusca } = await supabaseClient
+        // Busca o funcionário pelo ID ou Matrícula
+        const { data: funcionario, error } = await supabaseClient
+          .from('funcionarios')
+          .select('id, matricula, nome, local_nome')
+          .or(`id.eq.${funcId},matricula.eq.${funcId}`)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (!funcionario) {
+          txtFunc.innerText = `❌ Funcionário [${funcId}] não encontrado!`;
+          badgeFunc.className = "bg-red-100 border border-red-200 rounded-xl p-3 text-center text-red-800 font-bold text-sm flex items-center justify-center gap-2";
+          return;
+        }
+
+        funcionarioAtual = funcionario;
+        const codExibicao = funcionario.matricula || funcionario.id;
+        txtFunc.innerText = `[${codExibicao}] - ${funcionario.nome}`;
+
+        // Se o funcionário tiver um local pré-vinculado, seleciona no dropdown
+        if (funcionario.local_nome) {
+          const selectLocal = document.getElementById('select-local');
+          selectLocal.value = funcionario.local_nome;
+        }
+      } catch (err) {
+        txtFunc.innerText = "Erro ao carregar funcionário: " + err.message;
+      }
+    }
+
+    // 2. CARREGAR LOCAIS NO DROPDOWN
+    async function carregarLocaisDropdown() {
+      try {
+        const { data: locais, error } = await supabaseClient
+          .from('locais')
+          .select('nome')
+          .order('nome');
+
+        if (error) throw error;
+
+        const select = document.getElementById('select-local');
+        locais.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.value = loc.nome;
+          opt.innerText = loc.nome;
+          select.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("Erro ao carregar locais:", err.message);
+      }
+    }
+
+    // 3. ABRIR CÂMERA DO SCANNER
+    function iniciarScanner(acao) {
+      modoOperacaoAtual = acao;
+      
+      const badgeModo = document.getElementById('badge-modo-scanner');
+      badgeModo.innerText = `Escaneando para ${acao}`;
+      badgeModo.className = acao === 'Retirada' 
+        ? 'px-3 py-1 rounded-full text-xs font-bold text-white bg-red-500'
+        : 'px-3 py-1 rounded-full text-xs font-bold text-white bg-emerald-500';
+
+      document.getElementById('modal-scanner').classList.remove('hidden');
+
+      if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5Qrcode("reader");
+      }
+
+      html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        onScanSuccess
+      ).catch(err => {
+        alert("Erro ao acessar a câmara: " + err);
+        fecharScanner();
+      });
+    }
+
+    // 4. PROCESSAR QR CODE LIDO
+    async function onScanSuccess(decodedText) {
+      const idFerramenta = decodedText.trim();
+
+      // Verifica se o item já foi bipado nesta sessão
+      if (listaFerramentasBipadas.some(item => item.id === idFerramenta)) {
+        exibirFeedback(`⚠️ Ferramenta "${idFerramenta}" já está na lista!`, "warning");
+        return;
+      }
+
+      try {
+        // Validação obrigatória: a ferramenta DEVE existir no banco de dados
+        const { data: ferramenta, error } = await supabaseClient
           .from('ferramentas')
-          .select('*')
+          .select('id, nome')
           .eq('id', idFerramenta)
           .maybeSingle();
 
-        if (errBusca) throw errBusca;
+        if (error) throw error;
 
-        // Se NÃO existir, bloqueia o registro
         if (!ferramenta) {
-          throw new Error(`A ferramenta "${idFerramenta}" não está cadastrada no sistema!`);
+          exibirFeedback(`❌ A ferramenta "${idFerramenta}" não está cadastrada no sistema!`, "error");
+          return;
         }
 
-        const novoStatus = (acao === 'Retirada') ? 'Emprestado' : 'Disponível';
-        const comQuem = (acao === 'Retirada') ? funcionario : null;
+        // Adiciona à lista local de bipadas
+        listaFerramentasBipadas.push({
+          id: ferramenta.id,
+          nome: ferramenta.nome,
+          acao: modoOperacaoAtual
+        });
 
-        // 2. Apenas ATUALIZA o status da ferramenta existente
-        const { error: errFerramenta } = await supabaseClient
-          .from('ferramentas')
-          .update({
-            status: novoStatus,
-            com_quem_esta: comQuem,
-            local_atual: local,
-            desde: new Date().toISOString()
-          })
-          .eq('id', idFerramenta);
+        atualizarInterfaceBipadas();
+        exibirFeedback(`✅ Ferramenta "${ferramenta.nome}" adicionada!`, "success");
 
-        if (errFerramenta) throw errFerramenta;
-
-        // 3. Insere o registro no histórico
-        const { error: errHist } = await supabaseClient
-          .from('historico')
-          .insert([{
-            id_ferramenta: idFerramenta,
-            nome_ferramenta: ferramenta.nome, // Utiliza o nome oficial do cadastro
-            nome_funcionario: funcionario,
-            local_uso: local,
-            acao: acao
-          }]);
-
-        if (errHist) throw errHist;
-
-        msg.className = "p-4 rounded-lg text-center text-sm font-semibold bg-green-100 text-green-800 block";
-        msg.innerText = "✅ Movimentação registrada com sucesso!";
-        document.getElementById('form-registro').reset();
       } catch (err) {
-        msg.className = "p-4 rounded-lg text-center text-sm font-semibold bg-red-100 text-red-800 block";
-        msg.innerText = "❌ Erro ao registrar: " + err.message;
+        exibirFeedback("Erro ao validar QR Code: " + err.message, "error");
+      }
+    }
+
+    // Fechar Modal da Câmera
+    function fecharScanner() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+          document.getElementById('modal-scanner').classList.add('hidden');
+        }).catch(() => {
+          document.getElementById('modal-scanner').classList.add('hidden');
+        });
+      } else {
+        document.getElementById('modal-scanner').classList.add('hidden');
+      }
+    }
+
+    // 5. ATUALIZAR LISTA VISUAL DAS FERRAMENTAS BIPADAS
+    function atualizarInterfaceBipadas() {
+      const container = document.getElementById('container-bipadas');
+      const countLabel = document.getElementById('count-bipadas');
+      const btnLimpar = document.getElementById('btn-limpar');
+
+      countLabel.innerText = listaFerramentasBipadas.length;
+
+      if (listaFerramentasBipadas.length === 0) {
+        container.innerHTML = '<p id="msg-empty" class="text-xs text-slate-400 text-center py-2">Nenhuma ferramenta bipada ainda.</p>';
+        btnLimpar.classList.add('hidden');
+        return;
+      }
+
+      btnLimpar.classList.remove('hidden');
+
+      container.innerHTML = listaFerramentasBipadas.map((item, index) => `
+        <div class="bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between shadow-sm">
+          <div class="flex items-center gap-2 overflow-hidden">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold text-white ${item.acao === 'Retirada' ? 'bg-red-500' : 'bg-emerald-500'}">
+              ${item.acao}
+            </span>
+            <span class="text-xs font-bold text-slate-800 truncate">${item.id} - ${item.nome}</span>
+          </div>
+          <button type="button" onclick="removerItemBipado(${index})" class="text-slate-400 hover:text-red-500 p-1">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </div>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    // Remover um item individual
+    function removerItemBipado(index) {
+      listaFerramentasBipadas.splice(index, 1);
+      atualizarInterfaceBipadas();
+    }
+
+    // Limpar toda a lista
+    function limparLista() {
+      listaFerramentasBipadas = [];
+      atualizarInterfaceBipadas();
+    }
+
+    // 6. CONFIRMAR E ENVIAR OS REGISTROS PARA O SUPABASE
+    async function confirmarRegistros() {
+      if (!funcionarioAtual) {
+        alert("Não é possível registrar: funcionário não identificado na URL!");
+        return;
+      }
+
+      if (listaFerramentasBipadas.length === 0) {
+        alert("Por favor, escanie pelo menos uma ferramenta antes de confirmar!");
+        return;
+      }
+
+      const localSelecionado = document.getElementById('select-local').value || funcionarioAtual.local_nome || 'Não Especificado';
+      const btn = document.getElementById('btn-confirmar');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>Processando...</span>';
+
+      try {
+        for (const item of listaFerramentasBipadas) {
+          const novoStatus = (item.acao === 'Retirada') ? 'Emprestado' : 'Disponível';
+          const comQuem = (item.acao === 'Retirada') ? funcionarioAtual.nome : null;
+
+          // 1. Atualiza a tabela de ferramentas
+          const { error: errFerramenta } = await supabaseClient
+            .from('ferramentas')
+            .update({
+              status: novoStatus,
+              com_quem_esta: comQuem,
+              local_atual: localSelecionado,
+              desde: new Date().toISOString()
+            })
+            .eq('id', item.id);
+
+          if (errFerramenta) throw errFerramenta;
+
+          // 2. Insere a movimentação no histórico
+          const { error: errHist } = await supabaseClient
+            .from('historico')
+            .insert([{
+              id_ferramenta: item.id,
+              nome_ferramenta: item.nome,
+              funcionario_id: funcionarioAtual.id,
+              nome_funcionario: funcionarioAtual.nome,
+              local_uso: localSelecionado,
+              acao: item.acao
+            }]);
+
+          if (errHist) throw errHist;
+        }
+
+        exibirFeedback("✅ Todas as movimentações foram registradas com sucesso!", "success");
+        limparLista();
+
+      } catch (err) {
+        exibirFeedback("❌ Erro ao registrar: " + err.message, "error");
       } finally {
         btn.disabled = false;
-        btn.innerText = "Confirmar e Registrar";
+        btn.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i><span>Confirmar Registros</span>';
+        lucide.createIcons();
       }
-    });
+    }
+
+    // Utilitário para mensagens de feedback
+    function exibirFeedback(texto, tipo) {
+      const msg = document.getElementById('feedback-msg');
+      msg.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-amber-100', 'text-amber-800');
+
+      if (tipo === 'success') {
+        msg.classList.add('bg-green-100', 'text-green-800');
+      } else if (tipo === 'error') {
+        msg.classList.add('bg-red-100', 'text-red-800');
+      } else {
+        msg.classList.add('bg-amber-100', 'text-amber-800');
+      }
+
+      msg.innerText = texto;
+      setTimeout(() => msg.classList.add('hidden'), 4000);
+    }
   </script>
 </body>
 </html>
