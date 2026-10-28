@@ -37,7 +37,7 @@
       </div>
     </div>
 
-    <!-- 2. Local de Destino / Uso (Preenchido auto, mas editável) -->
+    <!-- 2. Local de Destino / Uso (Seleção Manual) -->
     <div class="mb-4">
       <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
         Local de Destino / Uso:
@@ -132,12 +132,11 @@
     let ultimoCodigoLido = null;
     let tempoUltimaLeitura = 0;
 
-    // Construtor do Som de Bipe Alto (Estilo Leitor de Código de Barras POS)
+    // Construtor do Som de Bipe Alto (Estilo Leitor POS)
     function emitirSomBipe() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        // Garante que o contexto esteja ativo
         if (audioCtx.state === 'suspended') {
           audioCtx.resume();
         }
@@ -145,11 +144,9 @@
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
 
-        // Frequência aguda estilo leitor físico (2000 Hz)
         osc.type = 'sine';
         osc.frequency.setValueAtTime(2000, audioCtx.currentTime);
 
-        // Volume alto (0.95)
         gainNode.gain.setValueAtTime(0.95, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
 
@@ -202,7 +199,7 @@
       }
     }
 
-    // 2. CARREGAR FUNCIONÁRIO PELA URL E AUTO-SELECIONAR O LOCAL
+    // 2. CARREGAR FUNCIONÁRIO PELA URL (Apenas campos padrão id, matricula, nome)
     async function carregarFuncionarioURL() {
       const urlParams = new URLSearchParams(window.location.search);
       const funcId = urlParams.get('funcionario') || urlParams.get('id') || urlParams.get('matricula');
@@ -216,8 +213,7 @@
       }
 
       try {
-        // Seleciona local_nome ou local para garantir compatibilidade com o banco
-        let query = supabaseClient.from('funcionarios').select('id, matricula, nome, local_nome, local');
+        let query = supabaseClient.from('funcionarios').select('id, matricula, nome');
 
         if (isUUID(funcId)) {
           query = query.eq('id', funcId);
@@ -238,32 +234,6 @@
         funcionarioAtual = funcionario;
         const codExibicao = funcionario.matricula || funcionario.id;
         txtFunc.innerText = `[${codExibicao}] - ${funcionario.nome}`;
-
-        // Obtém o nome do local (testa local_nome primeiro, depois local)
-        const localAlvo = (funcionario.local_nome || funcionario.local || '').trim();
-
-        if (localAlvo) {
-          const selectLocal = document.getElementById('select-local');
-          
-          // Verifica se o local existe nas opções do dropdown
-          let optExiste = Array.from(selectLocal.options).some(opt => opt.value.toLowerCase() === localAlvo.toLowerCase());
-
-          // Se não existir, insere dinamicamente
-          if (!optExiste) {
-            const novaOpt = document.createElement('option');
-            novaOpt.value = localAlvo;
-            novaOpt.innerText = localAlvo;
-            selectLocal.appendChild(novaOpt);
-          }
-
-          // Define o valor selecionado
-          for (let opt of selectLocal.options) {
-            if (opt.value.toLowerCase() === localAlvo.toLowerCase()) {
-              selectLocal.value = opt.value;
-              break;
-            }
-          }
-        }
       } catch (err) {
         txtFunc.innerText = "Erro ao carregar funcionário: " + err.message;
         badgeFunc.className = "bg-red-100 border border-red-200 rounded-xl p-3 text-center text-red-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-2";
@@ -339,10 +309,10 @@
           return;
         }
 
-        // Toca o som de confirmação em volume alto
+        // Emitir bipe sonoro de confirmação
         emitirSomBipe();
 
-        // Adiciona à lista
+        // Adicionar à lista
         listaFerramentasBipadas.push({
           id: ferramenta.id,
           nome: ferramenta.nome,
@@ -414,8 +384,7 @@
         return;
       }
 
-      const localPadrao = funcionarioAtual.local_nome || funcionarioAtual.local || 'Não Especificado';
-      const localSelecionado = document.getElementById('select-local').value || localPadrao;
+      const localSelecionado = document.getElementById('select-local').value || 'Não Especificado';
       const btn = document.getElementById('btn-confirmar');
 
       btn.disabled = true;
