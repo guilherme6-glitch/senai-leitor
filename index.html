@@ -37,7 +37,7 @@
       </div>
     </div>
 
-    <!-- 2. Local de Destino / Uso (Editável) -->
+    <!-- 2. Local de Destino / Uso (Preenchido auto, mas editável) -->
     <div class="mb-4">
       <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
         Local de Destino / Uso:
@@ -68,7 +68,7 @@
       </div>
     </div>
 
-    <!-- 4. ÁREA DA CÂMERA EMBUTIDA (INLINE, SEM MODAL) -->
+    <!-- 4. ÁREA DA CÂMERA EMBUTIDA (INLINE) -->
     <div id="section-camera" class="hidden mb-4 border-2 border-dashed border-slate-300 rounded-2xl p-2 bg-slate-50">
       <div class="flex items-center justify-between mb-2 px-1">
         <span id="label-modo-camera" class="text-xs font-bold px-2.5 py-1 rounded-full text-white bg-red-500">
@@ -87,7 +87,7 @@
     <!-- Mensagem de Feedback/Status das Leituras -->
     <div id="feedback-msg" class="hidden p-2.5 rounded-xl text-xs font-bold text-center mb-3"></div>
 
-    <!-- 5. Lista de Ferramentas Bipadas (Sempre visível abaixo da câmera) -->
+    <!-- 5. Lista de Ferramentas Bipadas -->
     <div class="mb-5">
       <div class="flex items-center justify-between mb-2">
         <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -132,20 +132,64 @@
     let ultimoCodigoLido = null;
     let tempoUltimaLeitura = 0;
 
-    // Helper para verificar se a string é um UUID válido
+    // Construtor do Som de Beep via Web Audio API
+    function emitirSomBipe() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // Frequência A5 (Tom agudo e limpo)
+        gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.15);
+      } catch (err) {
+        console.warn("Áudio não permitido pelo navegador no momento:", err);
+      }
+    }
+
+    // Helper para verificar UUID válido
     function isUUID(str) {
       const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       return regex.test(str);
     }
 
-    // Inicialização ao carregar
+    // Inicialização ao carregar (Carrega opções do local ANTES para permitir a seleção automática)
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
-      await carregarFuncionarioURL();
       await carregarLocaisDropdown();
+      await carregarFuncionarioURL();
     });
 
-    // 1. CARREGAR FUNCIONÁRIO PELA URL (Trata UUID e Matrícula)
+    // 1. CARREGAR LOCAIS NO SELETOR
+    async function carregarLocaisDropdown() {
+      try {
+        const { data: locais, error } = await supabaseClient
+          .from('locais')
+          .select('nome')
+          .order('nome');
+
+        if (error) throw error;
+
+        const select = document.getElementById('select-local');
+        locais.forEach(loc => {
+          const opt = document.createElement('option');
+          opt.value = loc.nome;
+          opt.innerText = loc.nome;
+          select.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("Erro ao carregar locais:", err.message);
+      }
+    }
+
+    // 2. CARREGAR FUNCIONÁRIO PELA URL (Trata UUID e Matrícula) E PREENCHE O LOCAL
     async function carregarFuncionarioURL() {
       const urlParams = new URLSearchParams(window.location.search);
       const funcId = urlParams.get('funcionario') || urlParams.get('id') || urlParams.get('matricula');
@@ -161,7 +205,6 @@
       try {
         let query = supabaseClient.from('funcionarios').select('id, matricula, nome, local_nome');
 
-        // Se for um UUID válido, pesquisa pela chave id. Caso contrário, consulta pelo campo matricula
         if (isUUID(funcId)) {
           query = query.eq('id', funcId);
         } else {
@@ -182,34 +225,14 @@
         const codExibicao = funcionario.matricula || funcionario.id;
         txtFunc.innerText = `[${codExibicao}] - ${funcionario.nome}`;
 
+        // Auto-seleciona o local padrão do funcionário caso cadastrado
         if (funcionario.local_nome) {
-          document.getElementById('select-local').value = funcionario.local_nome;
+          const selectLocal = document.getElementById('select-local');
+          selectLocal.value = funcionario.local_nome;
         }
       } catch (err) {
         txtFunc.innerText = "Erro ao carregar funcionário: " + err.message;
         badgeFunc.className = "bg-red-100 border border-red-200 rounded-xl p-3 text-center text-red-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-2";
-      }
-    }
-
-    // 2. CARREGAR LOCAIS NO SELETOR
-    async function carregarLocaisDropdown() {
-      try {
-        const { data: locais, error } = await supabaseClient
-          .from('locais')
-          .select('nome')
-          .order('nome');
-
-        if (error) throw error;
-
-        const select = document.getElementById('select-local');
-        locais.forEach(loc => {
-          const opt = document.createElement('option');
-          opt.value = loc.nome;
-          opt.innerText = loc.nome;
-          select.appendChild(opt);
-        });
-      } catch (err) {
-        console.error("Erro ao carregar locais:", err.message);
       }
     }
 
@@ -248,17 +271,15 @@
       document.getElementById('section-camera').classList.add('hidden');
     }
 
-    // 4. PROCESSAR LEITURA DO QR CODE (Com Prevenção de Duplicatas)
+    // 4. PROCESSAR LEITURA DO QR CODE (Com Som e Trava de Duplicata)
     async function onScanSuccess(decodedText) {
       const idFerramenta = decodedText.trim();
       const agora = Date.now();
 
-      // Ignora se estiver a processar uma leitura anterior ou se leu o mesmo código há menos de 2 segundos
       if (isProcessingScan || (idFerramenta === ultimoCodigoLido && (agora - tempoUltimaLeitura) < 2000)) {
         return;
       }
 
-      // Verifica se o item já está na lista local
       if (listaFerramentasBipadas.some(item => item.id === idFerramenta)) {
         exibirFeedback(`⚠️ Ferramenta "${idFerramenta}" já está na lista!`, "warning");
         ultimoCodigoLido = idFerramenta;
@@ -271,7 +292,6 @@
       tempoUltimaLeitura = agora;
 
       try {
-        // Valida no Supabase se a ferramenta existe
         const { data: ferramenta, error } = await supabaseClient
           .from('ferramentas')
           .select('id, nome')
@@ -284,6 +304,9 @@
           exibirFeedback(`❌ Ferramenta "${idFerramenta}" não cadastrada!`, "error");
           return;
         }
+
+        // Toca o bipe sonoro de confirmação
+        emitirSomBipe();
 
         // Adiciona à lista
         listaFerramentasBipadas.push({
