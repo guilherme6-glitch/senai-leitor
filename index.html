@@ -132,25 +132,34 @@
     let ultimoCodigoLido = null;
     let tempoUltimaLeitura = 0;
 
-    // Construtor do Som de Beep via Web Audio API
+    // Construtor do Som de Bipe Alto (Estilo Leitor de Código de Barras POS)
     function emitirSomBipe() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Garante que o contexto esteja ativo
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
 
+        // Frequência aguda estilo leitor físico (2000 Hz)
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // Frequência A5 (Tom agudo e limpo)
-        gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+        osc.frequency.setValueAtTime(2000, audioCtx.currentTime);
+
+        // Volume alto (0.95)
+        gainNode.gain.setValueAtTime(0.95, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
 
         osc.connect(gainNode);
         gainNode.connect(audioCtx.destination);
 
         osc.start();
-        osc.stop(audioCtx.currentTime + 0.15);
+        osc.stop(audioCtx.currentTime + 0.12);
       } catch (err) {
-        console.warn("Áudio não permitido pelo navegador no momento:", err);
+        console.warn("Erro ao emitir bipe:", err);
       }
     }
 
@@ -160,7 +169,7 @@
       return regex.test(str);
     }
 
-    // Inicialização ao carregar (Carrega opções do local ANTES para permitir a seleção automática)
+    // Inicialização ao carregar
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
       await carregarLocaisDropdown();
@@ -178,18 +187,22 @@
         if (error) throw error;
 
         const select = document.getElementById('select-local');
-        locais.forEach(loc => {
-          const opt = document.createElement('option');
-          opt.value = loc.nome;
-          opt.innerText = loc.nome;
-          select.appendChild(opt);
-        });
+        if (locais && locais.length > 0) {
+          locais.forEach(loc => {
+            if (loc.nome) {
+              const opt = document.createElement('option');
+              opt.value = loc.nome;
+              opt.innerText = loc.nome;
+              select.appendChild(opt);
+            }
+          });
+        }
       } catch (err) {
         console.error("Erro ao carregar locais:", err.message);
       }
     }
 
-    // 2. CARREGAR FUNCIONÁRIO PELA URL (Trata UUID e Matrícula) E PREENCHE O LOCAL
+    // 2. CARREGAR FUNCIONÁRIO PELA URL E AUTO-SELECIONAR O LOCAL
     async function carregarFuncionarioURL() {
       const urlParams = new URLSearchParams(window.location.search);
       const funcId = urlParams.get('funcionario') || urlParams.get('id') || urlParams.get('matricula');
@@ -203,7 +216,8 @@
       }
 
       try {
-        let query = supabaseClient.from('funcionarios').select('id, matricula, nome, local_nome');
+        // Seleciona local_nome ou local para garantir compatibilidade com o banco
+        let query = supabaseClient.from('funcionarios').select('id, matricula, nome, local_nome, local');
 
         if (isUUID(funcId)) {
           query = query.eq('id', funcId);
@@ -225,10 +239,30 @@
         const codExibicao = funcionario.matricula || funcionario.id;
         txtFunc.innerText = `[${codExibicao}] - ${funcionario.nome}`;
 
-        // Auto-seleciona o local padrão do funcionário caso cadastrado
-        if (funcionario.local_nome) {
+        // Obtém o nome do local (testa local_nome primeiro, depois local)
+        const localAlvo = (funcionario.local_nome || funcionario.local || '').trim();
+
+        if (localAlvo) {
           const selectLocal = document.getElementById('select-local');
-          selectLocal.value = funcionario.local_nome;
+          
+          // Verifica se o local existe nas opções do dropdown
+          let optExiste = Array.from(selectLocal.options).some(opt => opt.value.toLowerCase() === localAlvo.toLowerCase());
+
+          // Se não existir, insere dinamicamente
+          if (!optExiste) {
+            const novaOpt = document.createElement('option');
+            novaOpt.value = localAlvo;
+            novaOpt.innerText = localAlvo;
+            selectLocal.appendChild(novaOpt);
+          }
+
+          // Define o valor selecionado
+          for (let opt of selectLocal.options) {
+            if (opt.value.toLowerCase() === localAlvo.toLowerCase()) {
+              selectLocal.value = opt.value;
+              break;
+            }
+          }
         }
       } catch (err) {
         txtFunc.innerText = "Erro ao carregar funcionário: " + err.message;
@@ -271,7 +305,7 @@
       document.getElementById('section-camera').classList.add('hidden');
     }
 
-    // 4. PROCESSAR LEITURA DO QR CODE (Com Som e Trava de Duplicata)
+    // 4. PROCESSAR LEITURA DO QR CODE
     async function onScanSuccess(decodedText) {
       const idFerramenta = decodedText.trim();
       const agora = Date.now();
@@ -305,7 +339,7 @@
           return;
         }
 
-        // Toca o bipe sonoro de confirmação
+        // Toca o som de confirmação em volume alto
         emitirSomBipe();
 
         // Adiciona à lista
@@ -380,7 +414,8 @@
         return;
       }
 
-      const localSelecionado = document.getElementById('select-local').value || funcionarioAtual.local_nome || 'Não Especificado';
+      const localPadrao = funcionarioAtual.local_nome || funcionarioAtual.local || 'Não Especificado';
+      const localSelecionado = document.getElementById('select-local').value || localPadrao;
       const btn = document.getElementById('btn-confirmar');
 
       btn.disabled = true;
