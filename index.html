@@ -296,28 +296,28 @@
       tempoUltimaLeitura = agora;
 
       try {
-        const { data: ferramenta, error } = await supabaseClient
-          .from('ferramentas')
-          .select('id, nome')
-          .eq('id', idFerramenta)
-          .maybeSingle();
+// 1. Incluir 'local_padrao' na consulta ao Supabase
+const { data: ferramenta, error } = await supabaseClient
+  .from('ferramentas')
+  .select('id, nome, local_padrao')
+  .eq('id', idFerramenta)
+  .maybeSingle();
 
-        if (error) throw error;
+if (error) throw error;
+if (!ferramenta) {
+  exibirFeedback(`❌ Ferramenta "${idFerramenta}" não cadastrada!`, "error");
+  return;
+}
 
-        if (!ferramenta) {
-          exibirFeedback(`❌ Ferramenta "${idFerramenta}" não cadastrada!`, "error");
-          return;
-        }
+emitirSomBipe();
 
-        // Emitir bipe sonoro de confirmação
-        emitirSomBipe();
-
-        // Adicionar à lista
-        listaFerramentasBipadas.push({
-          id: ferramenta.id,
-          nome: ferramenta.nome,
-          acao: modoOperacaoAtual
-        });
+// 2. Guardar local_padrao na lista bipada
+listaFerramentasBipadas.push({
+  id: ferramenta.id,
+  nome: ferramenta.nome,
+  local_padrao: ferramenta.local_padrao,
+  acao: modoOperacaoAtual
+});
 
         atualizarInterfaceBipadas();
         exibirFeedback(`✅ "${ferramenta.nome}" adicionada!`, "success");
