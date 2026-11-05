@@ -391,22 +391,28 @@ listaFerramentasBipadas.push({
       btn.innerHTML = '<span>Processando...</span>';
 
       try {
-        for (const item of listaFerramentasBipadas) {
-          const novoStatus = (item.acao === 'Retirada') ? 'Emprestado' : 'Disponível';
-          const comQuem = (item.acao === 'Retirada') ? funcionarioAtual.nome : null;
+for (const item of listaFerramentasBipadas) {
+  const novoStatus = (item.acao === 'Retirada') ? 'Emprestado' : 'Disponível';
+  const comQuem = (item.acao === 'Retirada') ? funcionarioAtual.nome : null;
 
-          // 1. Atualiza status da ferramenta
-          const { error: errFerramenta } = await supabaseClient
-            .from('ferramentas')
-            .update({
-              status: novoStatus,
-              com_quem_esta: comQuem,
-              local_atual: localSelecionado,
-              desde: new Date().toISOString()
-            })
-            .eq('id', item.id);
+  // Se for Devolução (Disponível), local_atual volta a ser local_padrao.
+  // Caso um local de destino específico tenha sido selecionado no dropdown, ele tem prioridade.
+  const novoLocalAtual = (novoStatus === 'Disponível')
+    ? (localSelecionado !== 'Não Especificado' ? localSelecionado : (item.local_padrao || 'Não Especificado'))
+    : localSelecionado;
 
-          if (errFerramenta) throw errFerramenta;
+  // 1. Atualiza status da ferramenta
+  const { error: errFerramenta } = await supabaseClient
+    .from('ferramentas')
+    .update({
+      status: novoStatus,
+      com_quem_esta: comQuem,
+      local_atual: novoLocalAtual,
+      desde: new Date().toISOString()
+    })
+    .eq('id', item.id);
+
+  if (errFerramenta) throw errFerramenta;
 
           // 2. Insere registro no histórico
           const { error: errHist } = await supabaseClient
